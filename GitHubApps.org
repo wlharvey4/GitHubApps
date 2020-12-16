@@ -3,8 +3,8 @@
 #+title:Developing GitHub Apps
 #+subtitle:{{{version}}} {{{date}}}
 #+author:WLH4
-#+date:2020-12-16 08:19
-#+macro:version Version 0.0.0
+#+date:2020-12-16 09:25
+#+macro:version Version 0.0.1
 #+macro:upload-date (eval (current-time-string))
 #+bucket:pinecone-forest.com
 
@@ -16,7 +16,288 @@
 * Introduction
 :PROPERTIES:
 :unnumbered: t
+:url:      https://docs.github.com/en/free-pro-team@latest/developers
 :END:
+** Developers
+Go deeper with GitHub.
+
+- integrate with GitHub's APIs
+- customize GitHub workflow
+- build and share apps
+
+*** Overview
+- Learn about GitHub's APIs
+- Secure deployments
+- Join GitHub's Developer Program
+
+**** About GitHub's APIs
+
+#+cindex:API, GitHub,REST,GraphQL
+#+cindex:REST API
+#+cindex:GraphQL API
+Two stable versions of GitHub's API:
+
+1. the REST API, currently v3
+
+   #+cindex:Accept header
+   #+cindex:header, Accept
+   - request v3 via the =Accept= header ::
+
+     - All GitHub media types look like this:
+       : application/vnd.github[.version].param[+json]
+
+       : -H "Accept: application/vnd.github.v3+json"
+       : -H "Accept: application/vnd.github.v3.full+json"
+
+     - The most basic media types the API supports are:
+       : application/json
+       : application/vnd.github+json
+
+       Neither of these  specify a version, so you will  always get the current
+       default JSON representation of resources.
+
+     - You can specify a version like so:
+       : application/vnd.github.v3+json
+
+     - If you're specifying a property (such as text/full/raw/html/etc defined below),
+       put the version before the property:
+       : application/vnd.github.v3.raw+json
+
+     - You can check the current version through every response's headers. Look
+       for the X-GitHub-Media-Type header:
+       : -H "Accept: application/vnd.github.full+json"
+       : ==> X-GitHub-Media-Type: github.v3
+       : -H "Accept: application/vnd.github.v3.full+json"
+       : ==> X-GitHub-Media-Type: github.v3; param=full; format=json
+
+2. [[https://docs.github.com/en/free-pro-team@latest/graphql][the GraphQL API]]
+
+**** Managing Deploy Keys
+
+#+cindex:deploy keys
+#+cindex:keys, deploy, SSH
+#+cindex:SSH keys
+#+cindex:deployment scripts
+Learn  different ways  to manage  SSH keys  on your  servers when  you automate
+deployment scripts.
+
+You can  manage SSH  keys on  your servers  when automating  deployment scripts
+using:
+
+- SSH Agent Forwarding
+- HTTPS with OAuth tokens
+- deploy keys
+- machine users
+
+***** SSH Agent Forwarding
+
+#+cindex:SSH Agent Forwarding
+Agent forwarding  uses the same SSH  keys that your local  development computer
+uses.
+
+- In many cases, especially in the beginning of a project, SSH agent forwarding
+  is the quickest and simplest method to use.
+
+****** Pros
+- You do not have to generate or keep track of any new keys.
+- There is  no key management;  users have the  same permissions on  the server
+  that they do locally.
+- No keys are stored  on the server, so in case the  server is compromised, you
+  don't need to hunt down and remove the compromised keys.
+
+****** Cons
+- Users must SSH in to deploy; automated deploy processes can't be used.
+- SSH agent forwarding can be troublesome to run for Windows users.
+
+****** Setup
+1. [[https://docs.github.com/en/free-pro-team@latest/guides/using-ssh-agent-forwarding][Turn on agent forwarding locally.]]
+
+2. Set  your deploy  scripts to use  agent forwarding. For  example, on  a bash
+   script, enabling agent forwarding would look something like this:
+
+   : ssh -A serverA 'bash -s' < deploy.sh
+
+***** HTTPS cloning with OAuth tokens
+
+#+cindex:OAuth Token
+If you don't want to use SSH keys, you can use HTTPS with OAuth tokens.
+
+****** Pros
+- Anyone with access to the server can deploy the repository.
+- Users don't have to change their local SSH settings.
+- Multiple tokens (one for  each user) are not needed; one  token per server is
+  enough.
+- A token can be revoked at any time, turning it essentially into a one-use
+  password.
+- Generating new tokens can be easily scripted using the OAuth API.
+
+****** Cons
+- You must  make sure  that you  configure your token  with the  correct access
+  scopes.
+- Tokens are essentially passwords, and must be protected the same way.
+
+****** Setup
+[[https://docs.github.com/en/free-pro-team@latest/articles/git-automation-with-oauth-tokens][Guide on Git automation with tokens]]
+
+***** Deploy Keys
+
+#+cindex:Deploy key
+You can  launch projects  from a GitHub  repository to your  server by  using a
+deploy key, which is an SSH key that grants access to a single repository.
+
+- GitHub  attaches the  public  part of  the key  directly  to your  repository
+  instead of a personal  user account, and the private part  of the key remains
+  on your server.
+
+  #+cindex:write access
+  #+cindex:admin access
+  #+cindex:access, write, admin
+  #+cindex:collaborator
+- Deploy keys with write access can perform the same actions as an organization
+  member with admin access, or a collaborator on a personal repository.
+
+****** Pros
+- Anyone with access to the repository and server has the ability to deploy the
+  project.
+- Users don't have to change their local SSH settings.
+- Deploy keys are read-only by default, but you can give them write access when
+  adding them to a repository.
+
+****** Cons
+- Deploy keys only grant access to a single repository. More complex projects
+  may have many repositories to pull to the same server.
+- Deploy keys are usually not protected  by a passphrase, making the key easily
+  accessible if the server is compromised.
+
+****** Setup
+[[https://docs.github.com/en/free-pro-team@latest/developers/overview/managing-deploy-keys#setup-2][Setup guide]]
+
+***** Machine Users
+
+#+cindex:machine user
+#+cindex:automation
+If your  server needs  to access  multiple repositories, you  can create  a new
+GitHub  account  and attach  an  SSH  key that  will  be  used exclusively  for
+automation. Since this GitHub  account won't be used by a  human, it's called a
+"machine user"
+
+#+cindex:collaborator
+#+cindex:outside collaborator
+#+cindex:team
+You can add the machine user as:
+- a collaborator on a personal repository (granting read and write access)
+- an outside collaborator on an  organization repository (granting read, write,
+  or admin access)
+- to a team with access to the  repositories it needs to automate (granting the
+  permissions of the team).
+
+****** Pros
+- Anyone with access to the repository and server has the ability to deploy the
+  project.
+- No (human) users need to change their local SSH settings.
+- Multiple keys are not needed; one per server is adequate.
+
+****** Cons
+- Only organizations can  restrict machine users to  read-only access. Personal
+  repositories always grant collaborators read/write access.
+- Machine  user  keys,  like  deploy  keys, are  usually  not  protected  by  a
+  passphrase.
+
+****** Setup
+[[https://docs.github.com/en/free-pro-team@latest/developers/overview/managing-deploy-keys#setup-3][Setup guide]]
+
+**** Viewing Deployment History
+
+#+cindex:deployments, view
+View current and previous deployments for your repository.
+
+#+cindex:deployments, deliver
+#+cindex:GitHub Actions
+You can deliver deployments through:
+- GitHub Actions and environments
+- with the REST API and third party apps
+
+To view  current and past deployments,  click Environments on the  home page of
+your repository.
+
+**** Using SSH Agent Forwarding
+To simplify  deploying to  a server,  you can  set up  SSH agent  forwarding to
+securely use local SSH  keys. It allows you to use your  local SSH keys instead
+of leaving keys (without passphrases!) sitting on your server.
+
+You need to be familiar with ~ssh-agent~.
+
+  - It's a program that runs in the  background and keeps your key loaded into
+   memory, so that you don't need to enter your passphrase every time you need
+   to use the key.
+
+  - you can choose to let servers access your local ~ssh-agent~ as if they were
+    already running on the server.
+
+  - This is sort  of like asking a  friend to enter their password  so that you
+    can use their computer.
+
+See [[http://www.unixwiz.net/techtips/ssh-agent-forwarding.html][Steve Friedl's Tech Tips guide]]
+
+***** Setting up SSH agent forwarding
+
+****** Ensure that your own SSH key is set up and working
+See [[https://docs.github.com/en/free-pro-team@latest/articles/generating-ssh-keys][our guide on generating SSH keys]]
+
+You can test that your local key works by entering:
+
+: $ ssh -T git@github.com
+: # Attempt to SSH in to github
+: > Hi username! You've successfully authenticated, but GitHub does not provide
+: > shell access.
+
+[[shell:ssh -T git@github.com][Test local key]]
+
+****** Now set up SSH to allow agent forwarding to your server.
+
+1. Open up the file at ~~/.ssh/config~
+
+2. Enter the following text into the file:
+   : Host example.com [your server's domain name]
+   :   ForwardAgent yes
+
+   - Warning ::  You may be  tempted to  use a wildcard  like =Host *=  to just
+     apply this setting to all SSH  connections. That's not really a good idea,
+     as you'd be  sharing your local SSH  keys with every server  you SSH into.
+     They won't have  direct access to the  keys, but they will be  able to use
+     them as you while the connection is established
+
+     You should  only add  servers you trust  and that you  intend to  use with
+     agent forwarding.
+
+***** Testing SSH agent forwarding
+
+To test  that agent forwarding  is working with your  server, you can  SSH into
+your server and run  ~ssh -T git@github.com~ once more. If  all is well, you'll
+get back the same prompt as you did locally.
+
+If you're  unsure if your  local key  is being used,  you can also  inspect the
+=SSH_AUTH_SOCK= variable on your server:
+
+: $ echo "$SSH_AUTH_SOCK"
+: # Print out the SSH_AUTH_SOCK variable
+: > /tmp/ssh-4hNGMk8AZX/agent.79453
+
+If the variable is not set, it means that agent forwarding is not working.
+
+***** Troubleshooting SSH agent forwarding
+[[https://docs.github.com/en/free-pro-team@latest/developers/overview/using-ssh-agent-forwarding#troubleshooting-ssh-agent-forwarding][See guide]]
+
+**** Secret Scanning
+
+**** Replacing GitHub Services
+
+**** GitHib Developer Program
+
+*** Webhooks and Events
+*** Apps
+*** GitHub Marketplace
+
 * Chapter
 
 * Build Tools
